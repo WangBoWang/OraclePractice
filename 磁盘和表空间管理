@@ -1,0 +1,55 @@
+1.查看ASM磁盘使用情况(数据库大小)
+select group_number, name, total_mb, free_mb from v$asm_diskgroup;
+
+2.查看表空间使用情况
+SELECT a.tablespace_name, 
+a.bytes total, 
+b.bytes used, 
+c.bytes free, 
+(b.bytes * 100) / a.bytes "% USED ", 
+(c.bytes * 100) / a.bytes "% FREE " 
+FROM sys.sm$ts_avail a, sys.sm$ts_used b, sys.sm$ts_free c 
+WHERE a.tablespace_name = b.tablespace_name 
+AND a.tablespace_name = c.tablespace_name; 
+
+select * from dba_data_files;--查看表空间数据文件
+select * from sys.dba_tablespaces;--查看表空间属性
+
+3.查看某一表空间下的表、索引等占用空间情况
+select t.segment_name,t.segment_type,sum(t.BYTES)/1024/1024 from dba_segments t 
+where t.owner in (select distinct t.owner from dba_segments t where t.tablespace_name='表空间名称') 
+group by t.segment_name,t.segment_type;
+eg.select t.segment_name,t.segment_type,sum(t.BYTES)/1024/1024 from dba_segments t 
+where t.owner in (select distinct t.owner from dba_segments t where t.tablespace_name='ITM') 
+group by t.segment_name,t.segment_type;
+
+4.表空间的增加
+  方式一(前提是该表空间数据文件大小未达到最大限制，如有的限制为32G)：
+      alter database datafile '+DATA01/hbpondb/datafile/NMS_COLLECT01.dbf' resize 30720m;--修改数据文件大小
+  方式二(确保数据文件名不和原来的重合，先select * from dba_data_files)：
+      ALTER TABLESPACE 表空间名称 ADD  DATAFILE '+DATA01/hbpondb/datafile/undotbs_01.20170601.05.dbf'SIZE 5120M 
+      autoextend on NEXT 5M maxsize 10240M;                                               --增加数据文件
+      说明：5120M为初始大小；5M为每次自动扩展的大小；10240为创建的数据文件最大能扩展的极限(该极限必须小于数据文件最大的大小限制)。
+
+5.表空间的重建
+  一般不要轻易重建表空间。
+  1)新建表空间
+  新建undo表空间：CREATE UNDO TABLESPACE "UNDOTBS_01" DATAFILE '数据文件路径' SIZE 10240M 
+  autoextend on NEXT 5M maxsize 30720M;
+  新建一般表空间：CREATE TABLESPACE "COLLECT_DB" DATAFILE '+DATA01/hbpondb/datafile/collect_db.01.dbf' SIZE 10240M 
+  （这是不扩展的，扩不扩展按情况而定，一般第一个表空间文件不设定为扩展的，后期有需要再加）
+  注意：一是新建表空间名称不能和已有重合；二是文件路径(包含文件名)不能和已有重合，注意规范.dbf结尾
+  2)修改系统指定undo表空间(这里以undo为例，普通的表空间还未操作过)
+  ALTER SYSTEM SET UNDO_TABLESPACE = UNDOTBS_01;
+  3）查看原来表空间状态
+      --注意：在原来表空间status全部变为OFFLINE后才可以删除原表空间（一定要注意）
+      select t.segment_name,t.tablespace_name,t.segment_id,t.status from dba_rollback_segs t 
+      where t.tablespace_name = 'UNDOTBS1' and t.status='ONLINE';
+      select * from dba_rollback_segs t 
+      where t.tablespace_name = 'UNDOTBS1' and t.status='ONLINE';
+  4）删除原表空间
+      drop tablespace UNDOTBS1 including contents and datafiles;
+
+
+
+  
