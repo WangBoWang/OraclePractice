@@ -6,3 +6,8 @@
     delete删除数据不会影响全局和局部索引
     truncate数据会使全局索引失效，局部索引没影响(会自动维护)
     解决方式一(重建索引)：alter index index_name rebuild;
+三.改
+    直接已修改表数据方式修改就行。
+四.查(指定查表某一分区数据)
+    select * from table_name partition (partition_name);
+    eg. select * from nms_traffic.port_flow_statistics_day partition (PORT_FLOW_STA_A8)
