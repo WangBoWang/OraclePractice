@@ -82,8 +82,6 @@ partition by range (PARTITION_FLAG)
     update global indexes;
     
     注意两点：一是split分区会导致全局索引失效，所以要加update global indexes/update indexes;
-             二是本例添加的分区的values less than(04),由于04<maxvalue,未超出分区字段范围，所以只能对大于04且离04最大的分区进行割分，
-                如果是values less than(06)，06>maxvalue则对最后一个分区进行割分。
+             二是本例添加的分区的values less than(04),由于04<maxvalue,未超出分区字段范围，所以只能对大于04且离04最大的分区(即values less than(05))
+             的分区进行割分，如果是values less than(06)，06>maxvalue则对最后一个分区进行割分。
                 
-
-    
