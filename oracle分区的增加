@@ -1,0 +1,89 @@
+一.范围分区(range)
+分为有maxvalue和没有maxvalue两种情况。
+示例：
+create table NMS_TRAFFIC.PORT_FLOW_STATISTICS_DAY
+(
+  port_no            NUMBER(8) not null,
+  port_type          INTEGER not null,
+  partition_flag     NUMBER default TO_NUMBER(TO_CHAR(SYSDATE-1,'DD'))
+)
+partition by range (PARTITION_FLAG)
+(
+  partition PORT_FLOW_STA_A1 values less than (02)
+    tablespace TRAFFIC_DB
+    pctfree 10
+    initrans 1
+    maxtrans 255
+    storage
+    (
+      initial 64K
+      next 1M
+      minextents 1
+      maxextents unlimited
+    ),
+  partition PORT_FLOW_STA_A2 values less than (03)
+    tablespace TRAFFIC_DB
+    pctfree 10
+    initrans 1
+    maxtrans 255
+    storage
+    (
+      initial 64K
+      next 1M
+      minextents 1
+      maxextents unlimited
+    ),
+     partition PORT_FLOW_STA_A4 values less than (05)
+    tablespace TRAFFIC_DB
+    pctfree 10
+    initrans 1
+    maxtrans 255
+    storage
+    (
+      initial 64K
+      next 1M
+      minextents 1
+      maxextents unlimited
+    ),
+     partition PORT_FLOW_STA_A5 values less than (MAXVALUE)
+    tablespace TRAFFIC_DB
+    pctfree 10
+    initrans 1
+    maxtrans 255
+    storage
+    (
+      initial 64K
+      next 1M
+      minextents 1
+      maxextents unlimited
+    )
+    );
+    上面建立的是有maxvalue的表分区。maxvalue未指定时始终大于当前范围分区的分区字段(这里是PARTITION_FLAG)最大值。
+    
+    假如要增加分区PORT_FLOW_STA_A3，要求values less than (04)。
+    1）如果去掉maxvalue的最后一个分区，要给该表加分区，如下：
+    alter table nms_traffic.port_flow_statistics_day
+    add partition PORT_FLOW_STA_A3 values less than (04)
+    tablespace TRAFFIC_DB
+    pctfree 10
+    initrans 1
+    maxtrans 255
+    storage
+    (
+      initial 64K
+      next 1M
+      minextents 1
+      maxextents unlimited
+    )；
+    2）如果不去掉，则如下：
+    alter table nms_traffic.port_flow_statistics_day
+    split partition PORT_FLOW_STA_A3  at(04) into
+    (PARTITION  PORT_FLOW_STA_A3,PARTITION  PORT_FLOW_STA_A4 )
+    update global indexes;
+    
+    注意两点：一是split分区会导致全局索引失效，所以要加update global indexes/update indexes;
+             二是本例添加的分区的values less than(04),由于04<maxvalue,未超出分区字段范围，所以只能对大于04且离04最大的分区进行割分，
+                如果是values less than(06)，06>maxvalue则对最后一个分区进行割分。
+                
+
+    
